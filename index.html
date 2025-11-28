@@ -145,6 +145,7 @@
             color: white;
             position: relative;
             transition: all 0.3s ease;
+            z-index: 3;
         }
         
         .emoji {
@@ -171,19 +172,6 @@
             100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
         }
         
-        /* Animasi khusus untuk tombol "Tidak" */
-        @keyframes escape {
-            0% { transform: translate(0, 0); }
-            25% { transform: translate(50px, -30px); }
-            50% { transform: translate(-40px, 20px); }
-            75% { transform: translate(30px, 40px); }
-            100% { transform: translate(-50px, -20px); }
-        }
-        
-        .escape-animation {
-            animation: escape 0.5s ease-out;
-        }
-        
         /* Responsive design */
         @media (max-width: 600px) {
             .container {
@@ -194,13 +182,13 @@
                 font-size: 2rem;
             }
             
-            .buttons {
-                flex-direction: column;
-                align-items: center;
+            p {
+                font-size: 1rem;
             }
             
             button {
-                width: 80%;
+                padding: 10px 25px;
+                font-size: 1rem;
             }
         }
     </style>
@@ -265,36 +253,48 @@
         // Variabel untuk menghitung klik tombol "Tidak"
         let noClickCount = 0;
         const noButton = document.getElementById('no');
+        let isNoButtonMoving = false;
         
-        // Fungsi untuk memindahkan tombol "Tidak" ke posisi acak
+        // Fungsi untuk memindahkan tombol "Tidak" ke posisi acak di seluruh layar
         function moveNoButton() {
-            const container = document.querySelector('.container');
-            const containerRect = container.getBoundingClientRect();
+            // Ubah posisi menjadi fixed saat pertama kali dipanggil
+            if (!isNoButtonMoving) {
+                noButton.style.position = 'fixed';
+                isNoButtonMoving = true;
+            }
+            
             const buttonRect = noButton.getBoundingClientRect();
             
-            // Batas pergerakan tombol (dengan margin)
-            const maxX = containerRect.width - buttonRect.width - 40;
-            const maxY = containerRect.height - buttonRect.height - 40;
+            // Ukuran layar
+            const maxX = window.innerWidth - buttonRect.width - 20; // 20px margin
+            const maxY = window.innerHeight - buttonRect.height - 20; // 20px margin
             
-            // Posisi acak
+            // Posisi acak di seluruh layar
             const randomX = Math.floor(Math.random() * maxX);
             const randomY = Math.floor(Math.random() * maxY);
             
             // Mengatur posisi tombol
-            noButton.style.position = 'absolute';
             noButton.style.left = `${randomX}px`;
             noButton.style.top = `${randomY}px`;
-            noButton.style.transition = 'all 0.3s ease';
         }
         
-        // Event listener untuk mouseover pada tombol "Tidak"
+        // Event listener untuk mouseover pada tombol "Tidak" (untuk desktop)
         noButton.addEventListener('mouseover', function() {
-            // Menghitung posisi acak untuk tombol
-            moveNoButton();
+            if (noClickCount < 5) {
+                moveNoButton();
+            }
+        });
+        
+        // Event listener untuk touchstart pada tombol "Tidak" (untuk mobile)
+        noButton.addEventListener('touchstart', function(e) {
+            if (noClickCount < 5) {
+                e.preventDefault(); // Mencegah klik langsung
+                moveNoButton();
+            }
         });
         
         // Event listener untuk klik pada tombol "Tidak"
-        noButton.addEventListener('click', function() {
+        noButton.addEventListener('click', function(e) {
             noClickCount++;
             
             // Mengubah teks tombol "Tidak" secara acak
@@ -306,29 +306,33 @@
                 "Kasih kesempatan dong! 🙏",
                 "Jangan begitu 😔",
                 "Coba dipikir lagi 💭",
-                "Aku janji bakal baik! 🤞"
+                "Aku janji bakal baik! 🤞",
+                "Please... 🥹",
+                "Ayolah... 💔"
             ];
             
             noButton.textContent = noButtonTexts[Math.floor(Math.random() * noButtonTexts.length)];
             
-            // Jika sudah diklik 3 kali, sembunyikan di belakang tombol "Ya"
-            if (noClickCount >= 3) {
-                // Tambahkan animasi "escape" terakhir
-                noButton.classList.add('escape-animation');
-                
-                // Setelah animasi selesai, sembunyikan di belakang tombol "Ya"
+            // Jika sudah diklik 5 kali, sembunyikan tombol
+            if (noClickCount >= 5) {
                 setTimeout(() => {
-                    noButton.style.position = 'absolute';
-                    noButton.style.left = '50%';
-                    noButton.style.top = '50%';
-                    noButton.style.transform = 'translate(-50%, -50%)';
-                    noButton.style.zIndex = '1';
-                    noButton.style.opacity = '0.3';
-                    noButton.textContent = "Aku menyerah 😔";
+                    noButton.style.opacity = '0';
+                    noButton.style.pointerEvents = 'none';
                     
-                    // Hapus event listener agar tidak bisa dipindahkan lagi
-                    noButton.removeEventListener('mouseover', moveNoButton);
-                }, 500);
+                    // Tampilkan pesan khusus
+                    const message = document.createElement('p');
+                    message.textContent = 'Tombol "Tidak" sudah menyerah... Mungkin ini takdir? 💕';
+                    message.style.color = '#ff6b8b';
+                    message.style.fontWeight = 'bold';
+                    message.style.marginTop = '20px';
+                    message.style.animation = 'fadeIn 1s ease-out';
+                    document.querySelector('.buttons').appendChild(message);
+                }, 300);
+            } else {
+                // Pindahkan tombol setelah diklik
+                setTimeout(() => {
+                    moveNoButton();
+                }, 100);
             }
         });
         
