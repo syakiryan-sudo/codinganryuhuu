@@ -118,6 +118,8 @@
             gap: 20px;
             margin-top: 30px;
             flex-wrap: wrap;
+            position: relative;
+            min-height: 60px;
         }
         
         button {
@@ -135,7 +137,7 @@
             color: white;
             box-shadow: 0 5px 15px rgba(255, 107, 139, 0.4);
             position: relative;
-            z-index: 2;
+            z-index: 10;
         }
         
         #yes:hover {
@@ -147,8 +149,7 @@
             background-color: #6c757d;
             color: white;
             position: relative;
-            transition: all 0.3s ease;
-            z-index: 3;
+            z-index: 5;
         }
         
         .emoji {
@@ -313,89 +314,252 @@
             document.querySelector('.buttons').appendChild(whatsappButton);
         });
         
-        // Variabel untuk menghitung klik tombol "Tidak"
+        // Variabel untuk tombol "Tidak"
         let noClickCount = 0;
         const noButton = document.getElementById('no');
         let isNoButtonMoving = false;
+        let moveDistance = 100; // Jarak awal perpindahan
         
-        // Fungsi untuk memindahkan tombol "Tidak"
+        // Deteksi apakah mobile atau desktop
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 768;
+        
+        // Fungsi untuk mendapatkan area aman
+        function getSafeArea() {
+            const container = document.querySelector('.container');
+            const containerRect = container.getBoundingClientRect();
+            const yesButtonRect = yesButton.getBoundingClientRect();
+            const footerRect = document.querySelector('.footer').getBoundingClientRect();
+            
+            // Area yang lebih luas untuk mobile
+            const padding = isMobile ? 10 : 20;
+            const buttonWidth = 150;
+            const buttonHeight = 50;
+            
+            return {
+                minX: padding,
+                maxX: window.innerWidth - buttonWidth - padding,
+                minY: containerRect.top + 80,
+                maxY: footerRect.top - buttonHeight - 20, // Tidak sampai footer
+                yesButton: {
+                    left: yesButtonRect.left - 80,
+                    right: yesButtonRect.right + 80,
+                    top: yesButtonRect.top - 80,
+                    bottom: yesButtonRect.bottom + 80
+                }
+            };
+        }
+        
+        // Fungsi untuk memindahkan tombol "Tidak" dengan jarak yang meningkat
         function moveNoButton() {
             if (!isNoButtonMoving) {
                 noButton.style.position = 'fixed';
+                noButton.style.transition = 'all 0.3s ease';
                 isNoButtonMoving = true;
             }
             
-            const buttonRect = noButton.getBoundingClientRect();
-            const maxX = window.innerWidth - buttonRect.width - 20;
-            const maxY = window.innerHeight - buttonRect.height - 20;
+            const safeArea = getSafeArea();
+            let randomX, randomY;
+            let attempts = 0;
+            const maxAttempts = 30;
             
-            const randomX = Math.max(10, Math.floor(Math.random() * maxX));
-            const randomY = Math.max(10, Math.floor(Math.random() * maxY));
+            // Tingkatkan jarak perpindahan setiap kali diklik
+            moveDistance = Math.min(moveDistance + 50, 300);
             
+            // Cari posisi acak yang aman
+            do {
+                // Posisi acak dalam area aman
+                randomX = Math.floor(Math.random() * (safeArea.maxX - safeArea.minX)) + safeArea.minX;
+                randomY = Math.floor(Math.random() * (safeArea.maxY - safeArea.minY)) + safeArea.minY;
+                attempts++;
+                
+                // Pastikan tidak terlalu dekat dengan tombol "Ya"
+                const distanceFromYes = Math.sqrt(
+                    Math.pow(randomX - (safeArea.yesButton.left + safeArea.yesButton.right) / 2, 2) +
+                    Math.pow(randomY - (safeArea.yesButton.top + safeArea.yesButton.bottom) / 2, 2)
+                );
+                
+                if (distanceFromYes > moveDistance) {
+                    break;
+                }
+            } while (attempts < maxAttempts);
+            
+            // Terapkan posisi baru
             noButton.style.left = `${randomX}px`;
             noButton.style.top = `${randomY}px`;
+            
+            // Tambahkan efek shake
+            noButton.style.animation = 'shake 0.3s';
+            setTimeout(() => {
+                noButton.style.animation = '';
+            }, 300);
         }
         
-        // Event untuk desktop
+        // Tambahkan animasi shake
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes shake {
+                0%, 100% { transform: translateX(0); }
+                25% { transform: translateX(-10px); }
+                75% { transform: translateX(10px); }
+                        }
+        `;
+        document.head.appendChild(style);
+        
+        // Event untuk desktop - hover
         noButton.addEventListener('mouseover', function() {
-            if (noClickCount < 5) {
-                moveNoButton();
-            }
+            moveNoButton();
         });
         
-        // Event untuk mobile
+        // Event untuk mobile - touch
         noButton.addEventListener('touchstart', function(e) {
-            if (noClickCount < 5) {
-                e.preventDefault();
-                moveNoButton();
-            }
+            e.preventDefault();
+            moveNoButton();
         });
         
-        // Event untuk klik
+        // Event untuk klik (baik desktop maupun mobile)
         noButton.addEventListener('click', function(e) {
+            e.preventDefault();
             noClickCount++;
             
+            // Array teks yang berubah semakin desperate
             const noButtonTexts = [
                 "Yakin? 😢",
                 "Pikirkan lagi! 🤔",
                 "Jangan dong 😭",
                 "Aku bakal sedih 🥺",
-                "Kasih kesempatan dong! 🙏"
+                "Kasih kesempatan dong! 🙏",
+                "Please... 🥹",
+                "Ayolah... 💔",
+                "Jangan gitu dong 😔",
+                "Aku serius lho 😢",
+                "Coba deh... 🙏",
+                "Masa sih nggak mau? 😭",
+                "Aku janji baik kok 💕",
+                "Sekali aja... 🥺",
+                "Kumohon... 😢",
+                "Jangan kejam gitu 💔"
             ];
             
-            noButton.textContent = noButtonTexts[Math.floor(Math.random() * noButtonTexts.length)];
+            // Pilih teks secara acak
+            const randomText = noButtonTexts[Math.floor(Math.random() * noButtonTexts.length)];
+            noButton.textContent = randomText;
             
-            if (noClickCount >= 5) {
-                setTimeout(() => {
-                    noButton.style.opacity = '0';
-                    noButton.style.pointerEvents = 'none';
-                    
-                    const message = document.createElement('p');
-                    message.textContent = 'Tombol "Tidak" sudah menyerah... Mungkin ini takdir? 💕';
-                    message.style.color = '#ff6b8b';
-                    message.style.fontWeight = 'bold';
-                    message.style.marginTop = '20px';
-                    message.style.animation = 'fadeIn 1s ease-out';
-                    document.querySelector('.buttons').appendChild(message);
-                }, 300);
-            } else {
-                setTimeout(() => {
-                    moveNoButton();
-                }, 100);
+            // Ubah warna tombol semakin gelap
+            const grayShade = Math.max(108 - (noClickCount * 5), 50);
+            noButton.style.backgroundColor = `rgb(${grayShade}, ${grayShade + 10}, ${grayShade + 13})`;
+            
+            // Pindahkan tombol dengan jarak yang semakin jauh
+            moveNoButton();
+            
+            // Tambahkan pesan motivasi setelah beberapa klik
+            if (noClickCount === 5) {
+                showMotivationalMessage("Kok masih ngejar tombol 'Tidak' sih? 😅");
+            } else if (noClickCount === 10) {
+                showMotivationalMessage("Udah capek belum? Mending klik 'Ya' deh 😊");
+            } else if (noClickCount === 15) {
+                showMotivationalMessage("Kamu gigih banget! Tapi tombol 'Ya' lebih menarik lho 💕");
+            } else if (noClickCount === 20) {
+                showMotivationalMessage("Ini udah level pro! Tapi... kenapa nggak coba 'Ya'? 🥰");
             }
         });
+        
+        // Fungsi untuk menampilkan pesan motivasi
+        function showMotivationalMessage(text) {
+            const existingMessage = document.querySelector('.motivational-message');
+            if (existingMessage) {
+                existingMessage.remove();
+            }
+            
+            const message = document.createElement('div');
+            message.className = 'motivational-message';
+            message.textContent = text;
+            message.style.cssText = `
+                position: fixed;
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(255, 107, 139, 0.95);
+                color: white;
+                padding: 15px 30px;
+                border-radius: 50px;
+                font-weight: 600;
+                font-size: 1rem;
+                box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+                z-index: 1000;
+                animation: slideDown 0.5s ease-out;
+            `;
+            
+            document.body.appendChild(message);
+            
+            // Hapus pesan setelah 3 detik
+            setTimeout(() => {
+                message.style.animation = 'slideUp 0.5s ease-out';
+                setTimeout(() => {
+                    message.remove();
+                }, 500);
+            }, 3000);
+        }
+        
+        // Tambahkan animasi untuk pesan motivasi
+        const messageStyle = document.createElement('style');
+        messageStyle.textContent = `
+            @keyframes slideDown {
+                from {
+                    opacity: 0;
+                    transform: translateX(-50%) translateY(-50px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateX(-50%) translateY(0);
+                }
+            }
+            
+            @keyframes slideUp {
+                from {
+                    opacity: 1;
+                    transform: translateX(-50%) translateY(0);
+                }
+                to {
+                    opacity: 0;
+                    transform: translateX(-50%) translateY(-50px);
+                }
+            }
+            
+            @media (max-width: 600px) {
+                .motivational-message {
+                    font-size: 0.9rem !important;
+                    padding: 12px 20px !important;
+                    max-width: 90% !important;
+                    text-align: center;
+                }
+            }
+        `;
+        document.head.appendChild(messageStyle);
         
         // Animasi tambahan untuk emoji
         const emojis = document.querySelectorAll('.emoji');
         emojis.forEach(emoji => {
             emoji.addEventListener('mouseover', function() {
                 this.style.transform = 'scale(1.5) rotate(10deg)';
+                this.style.transition = 'all 0.3s ease';
             });
             
             emoji.addEventListener('mouseout', function() {
                 this.style.transform = 'scale(1) rotate(0deg)';
             });
         });
+        
+        // Prevent zoom on double tap for mobile
+        if (isMobile) {
+            let lastTouchEnd = 0;
+            document.addEventListener('touchend', function(event) {
+                const now = Date.now();
+                if (now - lastTouchEnd <= 300) {
+                    event.preventDefault();
+                }
+                lastTouchEnd = now;
+            }, false);
+        }
     </script>
 </body>
 </html>
